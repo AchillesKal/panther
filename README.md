@@ -27,7 +27,7 @@ You can focus on writing your tests or web-scraping scenario and Panther will ta
 Use [Composer](https://getcomposer.org/) to install Panther in your project. You may want to use the --dev flag if you want to use Panther for testing only and not for web scraping in a production environment:
 
     composer req symfony/panther
-    
+
     composer req --dev symfony/panther
 
 **Warning:** On \*nix systems, the `unzip` command must be installed or you will encounter an error similar to `RuntimeException: sh: 1: exec: /app/vendor/symfony/panther/src/ProcessManager/../../chromedriver-bin/chromedriver_linux64: Permission denied` (or `chromedriver_linux64: not found`).
@@ -130,6 +130,20 @@ class E2eTest extends PantherTestCase
 }
 ```
 
+### Interactive Mode
+
+Panther can make a pause in your tests suites after a failure.
+It is a break time really appreciated for investigating the problem through the web browser.
+For enabling this mode, you need the `--debug` PHPUnit option without the headless mode:
+
+    $ export PANTHER_NO_HEADLESS=1
+    $ phpunit --debug
+    
+    Test 'App\AdminTest::testLogin' started
+    Error: something is wrong.
+    
+    Press enter to continue...
+
 ## Features
 
 Unlike testing and web scraping libraries you're used to, Panther:
@@ -179,9 +193,31 @@ anterior PHPUnit version, you can also hook to PHPUnit with the Panther's server
 
 This listener will start the web server on demand like previously, but it will stop it after each test suite.
 
+### Using an External Web Server
+
+Sometimes, it's convenient to reuse an existing web server configuration instead of starting the built-in PHP one.
+To do so, set the `external_base_uri` option:
+
+```php
+<?php
+
+namespace App\Tests;
+
+use Symfony\Component\Panther\PantherTestCase;
+
+class E2eTest extends PantherTestCase
+{
+    public function testMyApp()
+    {
+        $pantherClient = static::createPantherClient(['external_base_uri' => 'https://localhost']);
+        // the PHP integrated web server will not be started
+    }
+}
+```
+
 ### Hidden Text
 
-Webdriver returns only the displayed text. When you filter on head tag (like `title`), the method `text()` returns an empty string. Use the method `html()` method to get the complete contents of the tag (including the tag itself). 
+Webdriver returns only the displayed text. When you filter on head tag (like `title`), the method `text()` returns an empty string. Use the method `html()` method to get the complete contents of the tag (including the tag itself).
 
 ### Environment Variables
 
@@ -194,6 +230,13 @@ The following environment variables can be set to change some Panther behaviors:
 * `PANTHER_CHROME_ARGUMENTS`: to customize `chromedriver` arguments. You need to set `PANTHER_NO_HEADLESS` to fully customize.
 * `PANTHER_WEB_SERVER_PORT`: to change the web server's port (default to `9080`)
 * `PANTHER_WEB_SERVER_ROUTER`:  to use a web server router script which is run at the start of each HTTP request
+* `PANTHER_EXTERNAL_BASE_URI`: to use an external web server (the PHP built-in web server will not be started)
+* `PANTHER_CHROME_BINARY`: to use another `google-chrome` binary
+
+### Accepting Self-signed SSL Certificates
+
+To force Chrome to accept invalid and self-signed certificates, set the following environment variable: `PANTHER_CHROME_ARGUMENTS='--ignore-certificate-errors'`
+**This option is insecure**, use it only for testing in controller environment, never in production (e.g. for web crawlers).
 
 ### Docker Integration
 
@@ -208,6 +251,15 @@ ENV PANTHER_NO_SANDBOX 1
 
 Build it with `docker build . -t myproject`
 Run it with `docker run -it -v "$PWD":/srv/myproject -w /srv/myproject myproject bin/phpunit`
+
+If you are using **Alpine Linux**, you may need to use another `chromedriver` binary.
+
+```
+RUN apk add --no-cache \
+        chromium \
+        chromium-chromedriver
+ENV PANTHER_CHROME_DRIVER_BINARY /usr/lib/chromium/chromedriver
+```
 
 ### Travis CI Integration
 

@@ -64,6 +64,7 @@ trait PantherTestCaseTrait
         'hostname' => '127.0.0.1',
         'port' => 9080,
         'router' => '',
+        'external_base_uri' => null,
     ];
 
     public static function tearDownAfterClass()
@@ -101,6 +102,12 @@ trait PantherTestCaseTrait
             return;
         }
 
+        if ($externalBaseUri = $options['external_base_uri'] ?? $_SERVER['PANTHER_EXTERNAL_BASE_URI'] ?? self::$defaultOptions['external_base_uri']) {
+            self::$baseUri = $externalBaseUri;
+
+            return;
+        }
+
         $options = [
             'webServerDir' => $options['webServerDir'] ?? static::$webServerDir ?? $_SERVER['PANTHER_WEB_SERVER_DIR'] ?? self::$defaultOptions['webServerDir'],
             'hostname' => $options['hostname'] ?? self::$defaultOptions['hostname'],
@@ -112,6 +119,11 @@ trait PantherTestCaseTrait
         self::$webServerManager->start();
 
         self::$baseUri = sprintf('http://%s:%s', $options['hostname'], $options['port']);
+    }
+
+    public static function isWebServerStarted()
+    {
+        return self::$webServerManager->isStarted();
     }
 
     /**
